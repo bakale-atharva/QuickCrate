@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QuickCrate
 
-## Getting Started
+Your friendly neighborhood grocery, online. QuickCrate is a grocery app in progress, inspired by [Sonny Sangha's Papamart](https://github.com/sonnysangha/papamart).
 
-First, run the development server:
+The app uses Next.js and React for the frontend, Clerk for authentication, and Convex for its backend. The current homepage is still the Next.js starter page.
+
+## Getting started
+
+Install dependencies with pnpm:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Configure a Clerk application and a Convex deployment. Add your Clerk publishable and secret keys and `NEXT_PUBLIC_CONVEX_URL` to `.env.local`. Configure Clerk's Convex JWT template and set `CLERK_FRONTEND_API_URL` on the Convex deployment for authentication.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Start the backend and frontend in separate terminals:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm backend
+```
 
-## Learn More
+```bash
+pnpm frontend
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Other commands
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `pnpm build` builds the production app.
+- `pnpm start` starts the production server after a build.
+- `pnpm lint` runs ESLint.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The SVG app icon is available at `app/icon.svg` and can also be reused as a logo.

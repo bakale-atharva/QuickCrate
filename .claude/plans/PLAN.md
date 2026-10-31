@@ -49,6 +49,8 @@ Each Linear issue includes acceptance criteria, implementation boundaries, verif
 ### M1: Schema, Identity, and Authorization
 **Branch `codex/phase-1-backend-foundation`**
 
+Testing constraint: Do not use Vitest or add a test harness for this phase. Verify with the existing lint, type-check, and build checks.
+
 - **BE-01:** Define users, addresses, categories, products, stock movements, carts/items, favorites, checkout quotes, orders/items/events, memberships, webhook receipts, and customer notes. Use indexed ownership lookups, pagination, integer paise, and integer quantities.
 - **BE-02:** Enforce customer/admin authorization in Convex. Derive identity from authentication; bootstrap admins through an internal operation with an explicit Clerk user ID. No public role-changing API or first-user promotion.
 - **BE-03:** Synchronize Clerk profiles using authenticated initialization and verified, deduplicated lifecycle webhooks. Prevent stale events from restoring deleted accounts; preserve historical orders.

@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ConvexProviderWithClerk from "@/components/ConvexProviderWithClerk";
+import InitializeUser from "@/components/InitializeUser";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body>
         <ClerkProvider>
-          <ConvexProviderWithClerk>{children}</ConvexProviderWithClerk>
+          <ConvexProviderWithClerk>
+            <InitializeUser />
+            {children}
+          </ConvexProviderWithClerk>
           <Toaster/>
         </ClerkProvider>
       </body>

@@ -2,9 +2,7 @@ import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { MutationCtx, mutation, query } from "./_generated/server";
 import { requireUser } from "./auth";
-
-const MAX_DISTINCT_PRODUCTS = 100;
-const MAX_ITEM_QUANTITY = BigInt(99);
+import { MAX_DISTINCT_PRODUCTS, MAX_ITEM_QUANTITY } from "../lib/constants";
 
 async function getOrCreateUserCart(
   ctx: MutationCtx,

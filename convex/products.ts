@@ -2,6 +2,11 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { MutationCtx, mutation, query } from "./_generated/server";
 import { requireAdmin } from "./auth";
+import {
+  DEFAULT_PAGE_LIMIT,
+  MAX_ADMIN_PAGE_LIMIT,
+  MAX_PAGE_LIMIT,
+} from "../lib/constants";
 
 function normalizeSlug(slug: string): string {
   return slug
@@ -39,7 +44,10 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const bound = Math.min(Math.max(args.limit ?? 50, 1), 100);
+    const bound = Math.min(
+      Math.max(args.limit ?? DEFAULT_PAGE_LIMIT, 1),
+      MAX_PAGE_LIMIT
+    );
     const products = args.categoryId
       ? await ctx.db
           .query("products")
@@ -78,7 +86,10 @@ export const search = query({
       return [];
     }
 
-    const bound = Math.min(Math.max(args.limit ?? 50, 1), 100);
+    const bound = Math.min(
+      Math.max(args.limit ?? DEFAULT_PAGE_LIMIT, 1),
+      MAX_PAGE_LIMIT
+    );
     const products = await ctx.db
       .query("products")
       .withSearchIndex("search_name", (q) => {
@@ -156,7 +167,10 @@ export const adminList = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const bound = Math.min(Math.max(args.limit ?? 50, 1), 200);
+    const bound = Math.min(
+      Math.max(args.limit ?? DEFAULT_PAGE_LIMIT, 1),
+      MAX_ADMIN_PAGE_LIMIT
+    );
     const products = await ctx.db.query("products").order("desc").take(bound);
 
     return await Promise.all(
@@ -202,7 +216,10 @@ export const getStockMovements = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const bound = Math.min(Math.max(args.limit ?? 50, 1), 100);
+    const bound = Math.min(
+      Math.max(args.limit ?? DEFAULT_PAGE_LIMIT, 1),
+      MAX_PAGE_LIMIT
+    );
     const movements = await ctx.db
       .query("stockMovements")
       .withIndex("by_product_id", (q) => q.eq("productId", args.productId))

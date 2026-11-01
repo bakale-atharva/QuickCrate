@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireOwner, requireUser } from "./auth";
 import { addressValidator } from "./schema";
+import { MAX_ADDRESSES_PER_USER } from "../lib/constants";
 
 function cleanAddress(addr: {
   fullName: string;
@@ -44,7 +45,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const bound = Math.min(Math.max(args.limit ?? 50, 1), 50);
+    const bound = Math.min(Math.max(args.limit ?? MAX_ADDRESSES_PER_USER, 1), MAX_ADDRESSES_PER_USER);
 
     return await ctx.db
       .query("addresses")
@@ -60,7 +61,7 @@ export const getDefault = query({
     const addresses = await ctx.db
       .query("addresses")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .take(50);
+      .take(MAX_ADDRESSES_PER_USER);
 
     const defaultAddr = addresses.find((a) => a.isDefault);
     return defaultAddr ?? (addresses.length > 0 ? addresses[0] : null);
@@ -90,7 +91,7 @@ export const create = mutation({
     const existingAddresses = await ctx.db
       .query("addresses")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .take(50);
+      .take(MAX_ADDRESSES_PER_USER);
 
     // If first address or explicitly marked default, it becomes the default
     const isDefault = existingAddresses.length === 0 || !!args.isDefault;
@@ -151,7 +152,7 @@ export const update = mutation({
           const otherAddresses = await ctx.db
             .query("addresses")
             .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-            .take(50);
+            .take(MAX_ADDRESSES_PER_USER);
 
           const candidate = otherAddresses.find((a) => a._id !== args.id);
           if (candidate) {
@@ -209,7 +210,7 @@ export const setDefault = mutation({
     const existingAddresses = await ctx.db
       .query("addresses")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .take(50);
+      .take(MAX_ADDRESSES_PER_USER);
 
     for (const existing of existingAddresses) {
       const isTarget = existing._id === args.id;

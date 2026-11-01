@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./auth";
+import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "../lib/constants";
 
 export const list = query({
   args: {
@@ -8,7 +9,10 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const bound = Math.min(Math.max(args.limit ?? 50, 1), 100);
+    const bound = Math.min(
+      Math.max(args.limit ?? DEFAULT_PAGE_LIMIT, 1),
+      MAX_PAGE_LIMIT
+    );
 
     const favs = await ctx.db
       .query("favorites")
@@ -51,57 +55,6 @@ export const isFavorite = query({
       .unique();
 
     return !!fav;
-  },
-});
-
-export const add = mutation({
-  args: {
-    productId: v.id("products"),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
-    const product = await ctx.db.get(args.productId);
-    if (!product) {
-      throw new Error("Product not found");
-    }
-
-    const existing = await ctx.db
-      .query("favorites")
-      .withIndex("by_user_id_and_product_id", (q) =>
-        q.eq("userId", user._id).eq("productId", args.productId)
-      )
-      .unique();
-
-    if (!existing) {
-      await ctx.db.insert("favorites", {
-        userId: user._id,
-        productId: args.productId,
-      });
-    }
-
-    return { isFavorite: true };
-  },
-});
-
-export const remove = mutation({
-  args: {
-    productId: v.id("products"),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
-
-    const existing = await ctx.db
-      .query("favorites")
-      .withIndex("by_user_id_and_product_id", (q) =>
-        q.eq("userId", user._id).eq("productId", args.productId)
-      )
-      .unique();
-
-    if (existing) {
-      await ctx.db.delete(existing._id);
-    }
-
-    return { isFavorite: false };
   },
 });
 

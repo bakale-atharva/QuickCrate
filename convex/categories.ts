@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireAdmin } from "./auth";
+import { MAX_ADMIN_PAGE_LIMIT, MAX_PAGE_LIMIT } from "../lib/constants";
 
 function normalizeSlug(slug: string): string {
   return slug
@@ -15,7 +16,7 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const bound = Math.min(Math.max(args.limit ?? 100, 1), 100);
+    const bound = Math.min(Math.max(args.limit ?? MAX_PAGE_LIMIT, 1), MAX_PAGE_LIMIT);
     return await ctx.db
       .query("categories")
       .withIndex("by_archived", (q) => q.eq("archived", false))
@@ -29,7 +30,7 @@ export const listAllAdmin = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const bound = Math.min(Math.max(args.limit ?? 100, 1), 200);
+    const bound = Math.min(Math.max(args.limit ?? MAX_PAGE_LIMIT, 1), MAX_ADMIN_PAGE_LIMIT);
     return await ctx.db.query("categories").order("desc").take(bound);
   },
 });

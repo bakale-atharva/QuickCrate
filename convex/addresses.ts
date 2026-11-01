@@ -4,7 +4,7 @@ import { requireOwner, requireUser } from "./auth";
 import { addressValidator } from "./schema";
 import { MAX_ADDRESSES_PER_USER } from "../lib/constants";
 
-function cleanAddress(addr: {
+export function cleanAddress(addr: {
   fullName: string;
   line1: string;
   line2?: string;

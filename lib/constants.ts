@@ -4,3 +4,7 @@ export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 100;
 export const MAX_ADMIN_PAGE_LIMIT = 200;
 export const MAX_ADDRESSES_PER_USER = 50;
+export const DELIVERY_FEE_PAISE = BigInt(4900);
+export const QUOTE_TTL_MS = 5 * 60 * 1000;
+export const MEMBERSHIP_PLAN_SLUG = "quickcrate_plus";
+export const MEMBERSHIP_FEATURE_SLUG = "free_shipping";

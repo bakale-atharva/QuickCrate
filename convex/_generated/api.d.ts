@@ -12,9 +12,12 @@ import type * as addresses from "../addresses.js";
 import type * as auth from "../auth.js";
 import type * as cart from "../cart.js";
 import type * as categories from "../categories.js";
+import type * as checkout from "../checkout.js";
 import type * as favorites from "../favorites.js";
 import type * as http from "../http.js";
 import type * as identityPolicy from "../identityPolicy.js";
+import type * as memberships from "../memberships.js";
+import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as users from "../users.js";
 
@@ -29,9 +32,12 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cart: typeof cart;
   categories: typeof categories;
+  checkout: typeof checkout;
   favorites: typeof favorites;
   http: typeof http;
   identityPolicy: typeof identityPolicy;
+  memberships: typeof memberships;
+  orders: typeof orders;
   products: typeof products;
   users: typeof users;
 }>;

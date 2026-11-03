@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import {
   internalMutation,
   internalQuery,
@@ -9,6 +10,23 @@ import { requireAdmin, requireOwner, requireUser } from "./auth";
 import { orderStatusValidator } from "./schema";
 import { Doc, Id } from "./_generated/dataModel";
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "../lib/constants";
+
+export function getPermittedOrderTransitions(status: string): string[] {
+  switch (status) {
+    case "placed":
+      return ["confirmed", "cancelled"];
+    case "confirmed":
+      return ["packing", "cancelled"];
+    case "packing":
+      return ["out_for_delivery", "cancelled"];
+    case "out_for_delivery":
+      return ["delivered"];
+    case "delivered":
+    case "cancelled":
+    default:
+      return [];
+  }
+}
 
 export const findOrderByUserAndKey = internalQuery({
   args: {
@@ -53,6 +71,14 @@ export const executePlaceOrder = internalMutation({
         status: existing.status,
         alreadyPlaced: true,
       };
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.deletedAt !== undefined) {
+      throw new Error("Active user not found");
+    }
+    if (user.suspended) {
+      throw new Error("Ordering is suspended for this account.");
     }
 
     // 2. Validate quote
@@ -437,11 +463,28 @@ export const adminGetOrder = query({
       .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
       .collect();
 
-    const events = await ctx.db
+    const rawEvents = await ctx.db
       .query("orderEvents")
       .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
       .order("asc")
       .collect();
+
+    const events = await Promise.all(
+      rawEvents.map(async (event) => {
+        const actor = await ctx.db.get(event.actorId);
+        return {
+          ...event,
+          actor: actor
+            ? {
+                id: actor._id,
+                name: actor.name,
+                email: actor.email,
+                role: actor.role ?? "customer",
+              }
+            : null,
+        };
+      })
+    );
 
     return {
       ...order,
@@ -451,17 +494,70 @@ export const adminGetOrder = query({
             email: customer.email,
             name: customer.name,
             clerkUserId: customer.clerkUserId,
+            suspended: customer.suspended ?? false,
           }
         : null,
       items: items.map((i) => i.item),
       events,
+      permittedTransitions: getPermittedOrderTransitions(order.status),
     };
+  },
+});
+
+export const adminGetOrderHistory = query({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const events = await ctx.db
+      .query("orderEvents")
+      .withIndex("by_order_id", (q) => q.eq("orderId", args.orderId))
+      .order("asc")
+      .collect();
+
+    return await Promise.all(
+      events.map(async (event) => {
+        const actor = await ctx.db.get(event.actorId);
+        return {
+          ...event,
+          actor: actor
+            ? {
+                id: actor._id,
+                name: actor.name,
+                email: actor.email,
+                role: actor.role ?? "customer",
+              }
+            : null,
+        };
+      })
+    );
+  },
+});
+
+export const adminGetPermittedTransitions = query({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+    return getPermittedOrderTransitions(order.status);
   },
 });
 
 export const adminListOrders = query({
   args: {
     status: v.optional(orderStatusValidator),
+    userId: v.optional(v.id("users")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -474,6 +570,13 @@ export const adminListOrders = query({
       orders = await ctx.db
         .query("orders")
         .withIndex("by_status", (q) => q.eq("status", statusFilter))
+        .order("desc")
+        .take(bound);
+    } else if (args.userId) {
+      const userFilter = args.userId;
+      orders = await ctx.db
+        .query("orders")
+        .withIndex("by_user_id", (q) => q.eq("userId", userFilter))
         .order("desc")
         .take(bound);
     } else {
@@ -495,11 +598,76 @@ export const adminListOrders = query({
                 id: customer._id,
                 email: customer.email,
                 name: customer.name,
+                clerkUserId: customer.clerkUserId,
+                suspended: customer.suspended ?? false,
               }
             : null,
           items: items.map((i) => i.item),
+          permittedTransitions: getPermittedOrderTransitions(order.status),
         };
       })
     );
+  },
+});
+
+export const adminListOrdersPaginated = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(orderStatusValidator),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    let paginatedOrders;
+    if (args.status) {
+      const statusFilter = args.status;
+      paginatedOrders = await ctx.db
+        .query("orders")
+        .withIndex("by_status", (q) => q.eq("status", statusFilter))
+        .order("desc")
+        .paginate(args.paginationOpts);
+    } else if (args.userId) {
+      const userFilter = args.userId;
+      paginatedOrders = await ctx.db
+        .query("orders")
+        .withIndex("by_user_id", (q) => q.eq("userId", userFilter))
+        .order("desc")
+        .paginate(args.paginationOpts);
+    } else {
+      paginatedOrders = await ctx.db
+        .query("orders")
+        .order("desc")
+        .paginate(args.paginationOpts);
+    }
+
+    const pageWithDetails = await Promise.all(
+      paginatedOrders.page.map(async (order) => {
+        const customer = await ctx.db.get(order.userId);
+        const items = await ctx.db
+          .query("orderItems")
+          .withIndex("by_order_id", (q) => q.eq("orderId", order._id))
+          .collect();
+
+        return {
+          ...order,
+          customer: customer
+            ? {
+                id: customer._id,
+                email: customer.email,
+                name: customer.name,
+                clerkUserId: customer.clerkUserId,
+                suspended: customer.suspended ?? false,
+              }
+            : null,
+          items: items.map((i) => i.item),
+          permittedTransitions: getPermittedOrderTransitions(order.status),
+        };
+      })
+    );
+
+    return {
+      ...paginatedOrders,
+      page: pageWithDetails,
+    };
   },
 });

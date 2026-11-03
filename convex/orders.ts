@@ -424,8 +424,7 @@ export const getMyOrder = query({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const order = await ctx.db.get(args.orderId);
-    requireOwner(user._id, order);
+    const order = requireOwner(user._id, await ctx.db.get(args.orderId));
 
     const items = await ctx.db
       .query("orderItems")

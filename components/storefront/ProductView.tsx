@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
+import FavoriteButton from "@/components/account/FavoriteButton";
 import ProductImage from "@/components/client/ProductImage";
 import QuantityControl from "@/components/client/QuantityControl";
 import StockBadge from "@/components/client/StockBadge";
@@ -84,12 +85,16 @@ export default function ProductView({ slug }: { slug: string }) {
           </div>
           <StockBadge stock={product.stock} className="text-sm" />
           <div className="max-w-xs pt-2">
-            <QuantityControl
-              productId={product._id}
-              productName={product.name}
-              stock={product.stock}
-              size="lg"
-            />
+            <div className="flex gap-2">
+              <QuantityControl
+                productId={product._id}
+                productName={product.name}
+                stock={product.stock}
+                size="lg"
+                className="flex-1"
+              />
+              <FavoriteButton productId={product._id} productName={product.name} />
+            </div>
             {inCart > 0 && (
               <Link href="/cart" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">
                 View cart

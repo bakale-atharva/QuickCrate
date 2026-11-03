@@ -58,6 +58,9 @@ export const prepareQuoteData = internalMutation({
     subtotalPaise: bigint;
   }> => {
     const user = await requireUser(ctx);
+    if (user.suspended) {
+      throw new Error("Ordering is suspended for this account. Please contact support.");
+    }
 
     // Resolve address
     let finalAddress: QuoteAddress;
@@ -171,6 +174,14 @@ export const validateQuoteBeforePlacement = internalQuery({
     quoteId: v.id("checkoutQuotes"),
   },
   handler: async (ctx, args): Promise<Doc<"checkoutQuotes">> => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.deletedAt !== undefined) {
+      throw new Error("Active user not found");
+    }
+    if (user.suspended) {
+      throw new Error("Ordering is suspended for this account. Please contact support.");
+    }
+
     const quote = await ctx.db.get(args.quoteId);
     if (!quote || quote.userId !== args.userId) {
       throw new Error("Invalid checkout quote.");
@@ -340,6 +351,10 @@ export const placeOrder = action({
       };
     }
 
+    if (user.suspended) {
+      throw new Error("Ordering is suspended for this account. Please contact support.");
+    }
+
     // Step 2: Validate quote consistency before contacting Clerk
     const quoteDoc: Doc<"checkoutQuotes"> = await ctx.runQuery(
       internal.checkout.validateQuoteBeforePlacement,
@@ -389,6 +404,9 @@ export const getQuote = query({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    if (user.suspended) {
+      throw new Error("Ordering is suspended for this account. Please contact support.");
+    }
     const quoteDoc = await ctx.db.get(args.quoteId);
     return requireOwner(user._id, quoteDoc);
   },

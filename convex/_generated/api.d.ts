@@ -14,6 +14,7 @@ import type * as cart from "../cart.js";
 import type * as categories from "../categories.js";
 import type * as checkout from "../checkout.js";
 import type * as favorites from "../favorites.js";
+import type * as fixtures from "../fixtures.js";
 import type * as http from "../http.js";
 import type * as identityPolicy from "../identityPolicy.js";
 import type * as memberships from "../memberships.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   categories: typeof categories;
   checkout: typeof checkout;
   favorites: typeof favorites;
+  fixtures: typeof fixtures;
   http: typeof http;
   identityPolicy: typeof identityPolicy;
   memberships: typeof memberships;

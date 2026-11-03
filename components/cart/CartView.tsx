@@ -59,6 +59,7 @@ export default function CartView() {
   const accountCart = cart.accountCart!;
   if (accountCart.items.length === 0) return <EmptyCart />;
   const unavailable = accountCart.items.filter((item) => !item.available).length;
+  const suspended = account.status === "ready" && account.me.suspended === true;
 
   return (
     <CartLayout
@@ -70,10 +71,19 @@ export default function CartView() {
       ))}
       summary={
         <Summary subtotalPaise={accountCart.subtotalPaise} unavailable={unavailable}>
-          <Button size="lg" className="h-10 w-full" disabled>
-            Checkout coming soon
-          </Button>
-          {account.status === "ready" && account.me.suspended && (
+          {suspended || unavailable > 0 ? (
+            <Button size="lg" className="h-10 w-full" disabled>
+              Proceed to checkout
+            </Button>
+          ) : (
+            <Link href="/checkout" className={buttonVariants({ size: "lg", className: "h-10 w-full" })}>
+              Proceed to checkout
+            </Link>
+          )}
+          {unavailable > 0 && !suspended && (
+            <p className="text-xs text-muted-foreground">Remove unavailable items to check out.</p>
+          )}
+          {suspended && (
             <p className="text-xs text-destructive">
               Ordering is suspended for this account. Contact support for help.
             </p>

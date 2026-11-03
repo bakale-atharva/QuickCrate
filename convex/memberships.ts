@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import {
+  action,
   internalAction,
   internalMutation,
   internalQuery,
@@ -314,5 +315,39 @@ export const handleBillingWebhook = internalAction({
       userId: user._id,
     });
     return null;
+  },
+});
+
+// Lets the signed-in customer pull their membership from Clerk right after a
+// subscription change, without waiting for the billing webhook.
+export const refreshMine = action({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ status: string; paidThrough?: number; eligible: boolean }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    const user: Doc<"users"> | null = await ctx.runQuery(
+      internal.memberships.getUserByClerkId,
+      { clerkUserId: identity.subject }
+    );
+    if (!user || user.deletedAt !== undefined) {
+      throw new Error("Active user not found");
+    }
+    const result: {
+      status: string;
+      paidThrough?: number;
+      eligible: boolean;
+      fenced: boolean;
+    } = await ctx.runAction(internal.memberships.refreshAuthoritativeMembership, {
+      userId: user._id,
+    });
+    return {
+      status: result.status,
+      paidThrough: result.paidThrough,
+      eligible: result.eligible,
+    };
   },
 });

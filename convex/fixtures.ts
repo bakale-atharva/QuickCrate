@@ -1,5 +1,12 @@
 import { v } from "convex/values";
-import { MutationCtx, internalMutation, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import {
+  MutationCtx,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+} from "./_generated/server";
 import { requireAdmin } from "./auth";
 import { Id } from "./_generated/dataModel";
 
@@ -314,6 +321,107 @@ export const FIXTURE_PRODUCTS: ProductFixture[] = [
   },
 ];
 
+function unsplash(photo: string) {
+  return `https://images.unsplash.com/${photo}?w=800&h=800&fit=crop&q=80&fm=jpg`;
+}
+
+// Free Unsplash photos (Unsplash License) for the development fixtures. They
+// are copied into Convex storage so fixtures use the same image path as
+// admin uploads.
+export const FIXTURE_IMAGE_URLS: Record<string, string> = {
+  "MILK-WHOLE-1L": unsplash("photo-1768850418252-37af725e46bb"),
+  "MILK-COW-500ML": unsplash("photo-1557759171-258278b1578b"),
+  "BREAD-WHEAT-400G": unsplash("photo-1693480532368-de842fb9dcf4"),
+  "BUTTER-SALTED-100G": unsplash("photo-1747087478545-915724f594e9"),
+  "CURD-PLAIN-500G": unsplash("photo-1571212515416-fef01fc43637"),
+  "PANEER-MALAI-200G": unsplash("photo-1583679863834-36f9db76eea4"),
+  "MANGO-ALPH-1KG": unsplash("photo-1787174314310-af23aecc8493"),
+  "APPLE-RED-1KG": unsplash("photo-1567306226416-28f0efdc88ce"),
+  "BANANA-ROB-1DOZ": unsplash("photo-1721330905294-e1d240461261"),
+  "TOMATO-FRESH-1KG": unsplash("photo-1737957473878-e915f5d7dd05"),
+  "ONION-RED-1KG": unsplash("photo-1789921528252-2b9691c132c7"),
+  "POTATO-FRESH-1KG": unsplash("photo-1741517628528-718bd73c8ad5"),
+  "RICE-BASMATI-1KG": unsplash("photo-1586201375761-83865001e31c"),
+  "RICE-BASMATI-5KG": unsplash("photo-1568347355280-d33fdf77d42a"),
+  "ATTA-WHEAT-5KG": unsplash("photo-1714842981153-ffeaf74e7a1a"),
+  "DAL-TOOR-1KG": unsplash("photo-1612869538502-b5baa439abd7"),
+  "OIL-MUSTARD-1L": unsplash("photo-1720468750623-39e9a09f5067"),
+  "TEA-ASSAM-250G": unsplash("photo-1713084875210-4167712dde80"),
+  "COFFEE-FILTER-200G": unsplash("photo-1774801935463-15275f0bcc8f"),
+  "ALMONDS-ROAST-200G": unsplash("photo-1772986799876-b1c38b623d4c"),
+  "CHIPS-MASALA-150G": unsplash("photo-1788843303734-f0543a2e9839"),
+  "DISHWASH-LEMON-500ML": unsplash("photo-1653248773863-d7a474f90ec8"),
+  "HANDWASH-NEEM-250ML": unsplash("photo-1725940889761-35d90aead72d"),
+};
+
+export const listFixtureSkusWithoutImage = internalQuery({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async (ctx) => {
+    const missing: string[] = [];
+    for (const sku of Object.keys(FIXTURE_IMAGE_URLS)) {
+      const product = await ctx.db
+        .query("products")
+        .withIndex("by_sku", (q) => q.eq("sku", sku))
+        .unique();
+      if (product && !product.imageId) missing.push(sku);
+    }
+    return missing;
+  },
+});
+
+// Returns false when the product is gone or already has an image (e.g. an
+// admin uploaded one meanwhile), so the caller can discard the stored file.
+export const setFixtureImage = internalMutation({
+  args: { sku: v.string(), imageId: v.id("_storage") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const product = await ctx.db
+      .query("products")
+      .withIndex("by_sku", (q) => q.eq("sku", args.sku))
+      .unique();
+    if (!product || product.imageId) return false;
+    await ctx.db.patch("products", product._id, { imageId: args.imageId });
+    return true;
+  },
+});
+
+// Idempotent: only fixture products without an image are fetched.
+export const attachFixtureImages = internalAction({
+  args: {},
+  returns: v.object({ attached: v.number(), failed: v.array(v.string()) }),
+  handler: async (ctx) => {
+    const missing: string[] = await ctx.runQuery(
+      internal.fixtures.listFixtureSkusWithoutImage,
+      {}
+    );
+    let attached = 0;
+    const failed: string[] = [];
+
+    for (const sku of missing) {
+      try {
+        const response = await fetch(FIXTURE_IMAGE_URLS[sku]);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const image = await response.blob();
+        if (!image.type.startsWith("image/")) throw new Error("Not an image");
+
+        const imageId = await ctx.storage.store(image);
+        const used: boolean = await ctx.runMutation(
+          internal.fixtures.setFixtureImage,
+          { sku, imageId }
+        );
+        if (used) attached++;
+        else await ctx.storage.delete(imageId);
+      } catch (error) {
+        console.error(`Unable to attach fixture image for ${sku}`, error);
+        failed.push(sku);
+      }
+    }
+
+    return { attached, failed };
+  },
+});
+
 async function executeSeeding(
   ctx: MutationCtx,
   resetStock: boolean
@@ -406,6 +514,9 @@ async function executeSeeding(
       productsCreated++;
     }
   }
+
+  // Images are fetched outside the transaction; already-imaged products skip.
+  await ctx.scheduler.runAfter(0, internal.fixtures.attachFixtureImages, {});
 
   const allCategories = await ctx.db.query("categories").collect();
   const allProducts = await ctx.db.query("products").collect();

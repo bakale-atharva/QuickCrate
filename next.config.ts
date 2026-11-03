@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
     agentFeedback: true,
   },
   cacheComponents: true,
+  images: {
+    // Product images are served from Convex file storage; products without
+    // one use placehold.co placeholders.
+    remotePatterns: [
+      { protocol: "https", hostname: "*.convex.cloud" },
+      { protocol: "https", hostname: "placehold.co" },
+    ],
+  },
   partialPrefetching: true,
   turbopack: {
     rules: {

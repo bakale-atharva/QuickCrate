@@ -24,6 +24,7 @@ export const me = query({
   args: {},
   returns: v.object({
     id: v.id("users"),
+    clerkUserId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
     role: v.union(v.literal("customer"), v.literal("admin")),
@@ -33,6 +34,7 @@ export const me = query({
     const user = await requireUser(ctx);
     return {
       id: user._id,
+      clerkUserId: user.clerkUserId,
       email: user.email,
       name: user.name,
       role: user.role === "admin" ? ("admin" as const) : ("customer" as const),

@@ -2,7 +2,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ConvexProviderWithClerk from "@/components/ConvexProviderWithClerk";
-import InitializeUser from "@/components/InitializeUser";
+import AccountProvider from "@/components/AccountProvider";
+import CartProvider from "@/components/cart/CartProvider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -28,13 +29,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body>
+      <body className="min-h-full">
         <ClerkProvider>
           <ConvexProviderWithClerk>
-            <InitializeUser />
-            {children}
+            <AccountProvider>
+              <CartProvider>{children}</CartProvider>
+            </AccountProvider>
           </ConvexProviderWithClerk>
-          <Toaster/>
+          <Toaster />
         </ClerkProvider>
       </body>
     </html>

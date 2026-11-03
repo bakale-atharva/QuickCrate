@@ -1,7 +1,7 @@
 "use client";
 
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
-import { ShieldIcon } from "lucide-react";
+import { BadgeCheckIcon, HeartIcon, MapPinIcon, PackageIcon, ShieldIcon } from "lucide-react";
 import Link from "next/link";
 import { useAccount } from "@/components/AccountProvider";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -24,17 +24,28 @@ export default function AccountControls() {
         </Link>
       )}
       <Show when="signed-in" fallback={<SignedOutControls />}>
+        <Link
+          href="/account/orders"
+          className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "hidden sm:inline-flex")}
+        >
+          <PackageIcon aria-hidden />
+          Orders
+        </Link>
         <div className="flex size-9 items-center justify-center">
-          <UserButton>
-            {isAdmin && (
-              <UserButton.MenuItems>
-                <UserButton.Link
-                  label="Admin"
-                  labelIcon={<ShieldIcon className="size-4" />}
-                  href="/admin"
-                />
-              </UserButton.MenuItems>
-            )}
+          <UserButton userProfileMode="navigation" userProfileUrl="/account/profile">
+            <UserButton.MenuItems>
+              <UserButton.Link label="Orders" labelIcon={<PackageIcon className="size-4" />} href="/account/orders" />
+              <UserButton.Link label="Favorites" labelIcon={<HeartIcon className="size-4" />} href="/account/favorites" />
+              <UserButton.Link label="Addresses" labelIcon={<MapPinIcon className="size-4" />} href="/account/addresses" />
+              <UserButton.Link
+                label="Membership"
+                labelIcon={<BadgeCheckIcon className="size-4" />}
+                href="/account/membership"
+              />
+              {isAdmin && (
+                <UserButton.Link label="Admin" labelIcon={<ShieldIcon className="size-4" />} href="/admin" />
+              )}
+            </UserButton.MenuItems>
           </UserButton>
         </div>
       </Show>

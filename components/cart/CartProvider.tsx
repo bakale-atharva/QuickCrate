@@ -21,6 +21,7 @@ type CartContextValue = {
   status: "loading" | "guest" | "account";
   accountCart: AccountCart | undefined;
   guestCart: GuestCart;
+  // Number of distinct products in the cart.
   count: number;
   quantityOf: (productId: string) => number;
   isPending: (productId: string) => boolean;
@@ -83,10 +84,8 @@ function CartState({
     return map;
   }, [status, accountCart, guestCart]);
 
-  const count = useMemo(
-    () => [...quantities.values()].reduce((sum, quantity) => sum + quantity, 0),
-    [quantities]
-  );
+  // Distinct products, not units: two of the same item counts once.
+  const count = quantities.size;
 
   const quantityOf = useCallback(
     (productId: string) => quantities.get(productId) ?? 0,

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export default function CartButton() {
   const { count, status } = useCart();
   const label =
-    status === "loading" ? "Cart" : `Cart, ${count} ${count === 1 ? "item" : "items"}`;
+    status === "loading" ? "Cart" : `Cart, ${count} ${count === 1 ? "product" : "products"}`;
 
   return (
     <Link

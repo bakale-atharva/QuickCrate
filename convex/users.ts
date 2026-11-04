@@ -3,6 +3,7 @@ import { paginationOptsValidator } from "convex/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { requireAdmin, requireUser } from "./auth";
 import { eventDecision } from "./identityPolicy";
+import { isMembershipActiveAndEligible } from "./memberships";
 import { DEFAULT_PAGE_LIMIT, MAX_ADMIN_PAGE_LIMIT } from "../lib/constants";
 
 export const initialize = mutation({
@@ -226,6 +227,7 @@ export const adminGetCustomer = query({
             paidThrough: membership.paidThrough,
             refreshedAt: membership.refreshedAt,
             refreshVersion: membership.refreshVersion,
+            eligible: isMembershipActiveAndEligible(membership.status, membership.paidThrough),
           }
         : null,
       orders: ordersWithDetails,

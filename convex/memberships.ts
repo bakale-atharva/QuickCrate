@@ -105,6 +105,26 @@ export const recordWebhookReceipt = internalMutation({
   },
 });
 
+// Releases a receipt whose processing failed so the provider's retry of the
+// same delivery is processed instead of being discarded as a duplicate.
+export const releaseWebhookReceipt = internalMutation({
+  args: {
+    eventId: v.string(),
+  },
+  handler: async (ctx, args): Promise<null> => {
+    const existing = await ctx.db
+      .query("webhookReceipts")
+      .withIndex("by_provider_and_event_id", (q) =>
+        q.eq("provider", "clerk").eq("eventId", args.eventId)
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    return null;
+  },
+});
+
 export const applyMembershipUpdate = internalMutation({
   args: {
     userId: v.id("users"),
@@ -257,20 +277,21 @@ export const refreshAuthoritativeMembership = internalAction({
     let paidThrough: number | undefined = undefined;
 
     if (subscription) {
-      const items = subscription.subscriptionItems || [];
-      const item =
-        items.find(
-          (i) =>
-            i.plan?.slug === MEMBERSHIP_PLAN_SLUG ||
-            i.plan?.features?.some(
-              (f) =>
-                f === MEMBERSHIP_FEATURE_SLUG ||
-                (typeof f === "object" && f.slug === MEMBERSHIP_FEATURE_SLUG)
-            )
-        ) || items[0];
+      // Only the QuickCrate Plus item counts. Clerk subscribes every user to
+      // the default free plan, so another active item (or the subscription's
+      // own status) must never be read as membership.
+      const item = (subscription.subscriptionItems || []).find(
+        (i) =>
+          i.plan?.slug === MEMBERSHIP_PLAN_SLUG ||
+          i.plan?.features?.some(
+            (f) =>
+              f === MEMBERSHIP_FEATURE_SLUG ||
+              (typeof f === "object" && f.slug === MEMBERSHIP_FEATURE_SLUG)
+          )
+      );
 
       if (item) {
-        status = item.status ?? subscription.status ?? "none";
+        status = item.status ?? "none";
         const rawPeriodEnd = item.periodEnd ?? item.period_end;
         if (rawPeriodEnd) {
           paidThrough =
@@ -278,8 +299,6 @@ export const refreshAuthoritativeMembership = internalAction({
               ? rawPeriodEnd
               : new Date(rawPeriodEnd).getTime();
         }
-      } else if (subscription.status) {
-        status = subscription.status;
       }
     }
 

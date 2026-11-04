@@ -114,9 +114,18 @@ http.route({
       const clerkUserId =
         data.payer?.user_id ?? data.user_id ?? data.payer_id;
       if (clerkUserId) {
-        await ctx.runAction(internal.memberships.handleBillingWebhook, {
-          clerkUserId,
-        });
+        try {
+          await ctx.runAction(internal.memberships.handleBillingWebhook, {
+            clerkUserId,
+          });
+        } catch {
+          // Membership verification failed (e.g. Clerk outage). Release the
+          // receipt and return a retryable status so the redelivery is applied.
+          await ctx.runMutation(internal.memberships.releaseWebhookReceipt, {
+            eventId,
+          });
+          return new Response("Membership refresh failed", { status: 500 });
+        }
       }
 
       return new Response("OK", { status: 200 });
